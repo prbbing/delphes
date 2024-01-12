@@ -34,6 +34,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <fstream>
 
 class TObjArray;
 class DelphesFormula;
@@ -81,6 +82,10 @@ private:
   TFractionMap fFractionMap; //!
   TBinMap fBinMap; //!
 
+  // Bing Edit:
+  std::vector<Double_t> maskedEta;
+  std::vector<Double_t> maskedPhi;
+  
   std::vector<Double_t> fEtaBins;
   std::vector<std::vector<Double_t> *> fPhiBins;
 

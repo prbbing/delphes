@@ -105,6 +105,17 @@ void SimpleCalorimeter::Init()
     }
   }
 
+  // Bing Edit
+  // Make the masked eta-phi vector
+  std::ifstream ifsEta;
+  ifsEta.open("cards/deadCellEta.txt", ios::in);
+  std::vector<Double_t> etaVec(std::istream_iterator<Double_t>(ifsEta), {}); 
+  maskedEta = etaVec;
+  std::ifstream ifsPhi;
+  ifsPhi.open("cards/deadCellPhi.txt", ios::in);
+  std::vector<Double_t> phiVec(std::istream_iterator<Double_t>(ifsPhi), {}); 
+  maskedPhi = phiVec;
+
   // for better performance we transform map of sets to parallel vectors:
   // vector< double > and vector< vector< double >* >
   for(itEtaBin = fBinMap.begin(); itEtaBin != fBinMap.end(); ++itEtaBin)
@@ -357,7 +368,7 @@ void SimpleCalorimeter::Process()
       track = static_cast<Candidate *>(fTrackInputArray->At(number));
       momentum = track->Momentum;
       position = track->Position;
-
+    
       energy = momentum.E() * fTrackFractions[number];
 
       fTrackTime += TMath::Sqrt(energy) * position.T();
@@ -472,7 +483,20 @@ void SimpleCalorimeter::FinalizeTower()
   fTower->Edges[3] = fTowerEdges[3];
 
   // fill SimpleCalorimeter towers
-  if(energy > 0.0) fTowerOutputArray->Add(fTower);
+  // Bing Edit: Check mask
+  bool masked = false;
+  if (fIsEcal) {
+    for (uint i = 0; i < maskedEta.size(); i++) {
+      if (eta > maskedEta.at(i) && eta <  maskedEta.at(i) + 0.0175 && phi > maskedPhi.at(i) && phi <  maskedPhi.at(i) + 0.0175) 
+        {
+          masked = true;
+          break;
+        }
+     }
+  }
+
+  if(energy > 0.0 && !masked) fTowerOutputArray->Add(fTower);
+  if (masked) energy = 0;
 
   // e-flow candidates
 
@@ -496,7 +520,8 @@ void SimpleCalorimeter::FinalizeTower()
     tower->PID = (fIsEcal) ? 22 : 0;
 
     tower->Momentum.SetPtEtaPhiE(pt, eta, phi, neutralEnergy);
-    fEFlowTowerOutputArray->Add(tower);
+    // Do not add EFlowTower if masked 
+    if (!masked) fEFlowTowerOutputArray->Add(tower);
 
     fItTowerTrackArray->Reset();
     while((track = static_cast<Candidate *>(fItTowerTrackArray->Next())))
