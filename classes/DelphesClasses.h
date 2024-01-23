@@ -66,6 +66,18 @@ public:
 
 //---------------------------------------------------------------------------
 
+class RecoMET: public TObject
+{
+public:
+  Float_t pT;
+  Float_t phi;
+  Float_t sig;
+
+  ClassDef(RecoMET, 1)
+};
+
+//---------------------------------------------------------------------------
+
 class LHEFEvent: public Event
 {
 public:

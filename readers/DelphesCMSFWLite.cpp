@@ -52,6 +52,7 @@
 #include "DataFormats/FWLite/interface/Handle.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/PatCandidates/interface/PackedGenParticle.h"
+#include "DataFormats/PatCandidates/interface/MET.h"
 #include "FWCore/FWLite/interface/FWLiteEnabler.h"
 #include "SimDataFormats/GeneratorProducts/interface/GenEventInfoProduct.h"
 #include "SimDataFormats/GeneratorProducts/interface/HepMCProduct.h"
@@ -63,7 +64,7 @@ using namespace std;
 //---------------------------------------------------------------------------
 
 void ConvertInput(fwlite::Event &event, Long64_t eventCounter,
-  ExRootTreeBranch *branchEvent, ExRootTreeBranch *branchWeight,
+  ExRootTreeBranch *branchEvent, ExRootTreeBranch *branchWeight, ExRootTreeBranch *branchRecoMET,
   DelphesFactory *factory, TObjArray *allParticleOutputArray,
   TObjArray *stableParticleOutputArray, TObjArray *partonOutputArray, Bool_t firstEvent)
 {
@@ -111,10 +112,14 @@ void ConvertInput(fwlite::Event &event, Long64_t eventCounter,
 
   Bool_t foundLHE = !((handleLHEEvent.getBranchNameFor(event, "source")).empty()) || !((handleLHEEvent.getBranchNameFor(event, "externalLHEProducer")).empty());
   Bool_t isMiniAOD = !((handlePackedParticle.getBranchNameFor(event, "packedGenParticles")).empty()) && ((handleParticle.getBranchNameFor(event, "genParticles")).empty());
+  
+  fwlite::Handle<vector<pat::MET> > handleMET;
+  handleMET.getByLabel(event, "slimmedMETs");
 
   HepMCEvent *element;
   Weight *weight;
   Candidate *candidate;
+  RecoMET *recoMET;
   TDatabasePDG *pdg;
   TParticlePDG *pdgParticle;
   Int_t pdgCode;
@@ -226,6 +231,12 @@ void ConvertInput(fwlite::Event &event, Long64_t eventCounter,
   }
 
   if(!isMiniAOD) return;
+  if (handleMET->size()) {
+    recoMET->pT = handleMET->at(0).pt(); 
+    recoMET->phi = handleMET->at(0).phi(); 
+    recoMET->sig = handleMET->at(0).metSignificance(); 
+  } 
+
   // For MiniAOD sample,
   // Only status==1 particles are saved to packedGenParticles.
   for(itPackedParticle = handlePackedParticle->begin(); itPackedParticle != handlePackedParticle->end(); ++itPackedParticle)
@@ -305,7 +316,7 @@ int main(int argc, char *argv[])
   TFile *outputFile = 0;
   TStopwatch eventStopWatch;
   ExRootTreeWriter *treeWriter = 0;
-  ExRootTreeBranch *branchEvent = 0, *branchWeight = 0;
+  ExRootTreeBranch *branchEvent = 0, *branchWeight = 0, *branchRecoMET = 0;
   ExRootConfReader *confReader = 0;
   Delphes *modularDelphes = 0;
   DelphesFactory *factory = 0;
@@ -349,6 +360,7 @@ int main(int argc, char *argv[])
 
     branchEvent = treeWriter->NewBranch("Event", HepMCEvent::Class());
     branchWeight = treeWriter->NewBranch("Weight", Weight::Class());
+    branchRecoMET = treeWriter->NewBranch("RecoMET", RecoMET::Class());
 
     confReader = new ExRootConfReader;
     confReader->ReadFile(argv[1]);
@@ -406,7 +418,7 @@ int main(int argc, char *argv[])
       for(event.toBegin(); !event.atEnd() && !interrupted && (maxEvents <= 0 || eventCounter-skipEvents < maxEvents); ++event)
       {
         if(eventCounter >= skipEvents){
-          ConvertInput(event, eventCounter, branchEvent, branchWeight, factory,
+          ConvertInput(event, eventCounter, branchEvent, branchWeight, branchRecoMET, factory,
             allParticleOutputArray, stableParticleOutputArray, partonOutputArray, firstEvent);
           modularDelphes->ProcessTask();
 

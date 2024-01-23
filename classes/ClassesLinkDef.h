@@ -56,6 +56,7 @@
 #pragma link C++ class Photon+;
 #pragma link C++ class Electron+;
 #pragma link C++ class Muon+;
+#pragma link C++ class RecoMET+;
 #pragma link C++ class CscCluster+;
 
 #pragma link C++ class Jet+;
